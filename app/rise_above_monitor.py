@@ -3,6 +3,7 @@ import json
 import os
 import time
 import random
+import logging
 from datetime import datetime
 from bs4 import BeautifulSoup
 from discord_notifier import DiscordNotifier
@@ -15,6 +16,8 @@ class RiseAboveMonitor:
         self.stock_data = self.load_stock_data()
         self.current_products = {}
         self.stock_file_exists = os.path.exists(data_file)
+        self.stock_changed = False
+        self.logger = logging.getLogger(__name__)
     
     def get_page(self, url):
         time.sleep(random.uniform(2, 5))
@@ -23,6 +26,7 @@ class RiseAboveMonitor:
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
+            self.logger.error(f"Error fetching {url}: {e}")
             print(f"Error fetching {url}: {e}")
             return None
     
@@ -43,8 +47,9 @@ class RiseAboveMonitor:
     
     def save_stock_data(self):
         os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
+        last_updated = datetime.now().isoformat() if self.stock_changed else self.stock_data.get("last_updated")
         with open(self.data_file, "w") as f:
-            json.dump({"products": self.current_products, "last_updated": datetime.now().isoformat()}, f, indent=2)
+            json.dump({"products": self.current_products, "last_updated": last_updated}, f, indent=2)
     
     def process_artist(self, url, artist_name, mode='test'):
         artist_key = artist_name.replace(' ', '_')
@@ -63,6 +68,7 @@ class RiseAboveMonitor:
         product_links = soup.find_all('a', class_='woocommerce-LoopProduct-link')
         product_titles = soup.find_all('h2', class_='woocommerce-loop-product__title')
         
+        self.logger.info(f"Processing artist: {artist_name}")
         print(f"\n=== {artist_name} ===")
         for link, title in zip(product_links, product_titles):
             album_name = title.get_text().strip().replace(' ', '_').replace('/', '_')
@@ -126,16 +132,22 @@ class RiseAboveMonitor:
         if product_key in self.stock_data["products"]:
             old_stock = self.stock_data["products"][product_key]["in_stock"]
             if old_stock == False and product_data["in_stock"] == True:
+                self.logger.warning(f"RESTOCK: {product_data['artist']} - {product_data['album']} - {product_data['variant']}")
                 print(f"🔔 RESTOCK: {product_data['album']} - {product_data['variant']}")
                 self.discord.send_restock_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']})
+                self.stock_changed = True
             elif old_stock == True and product_data["in_stock"] == False:
+                self.logger.warning(f"OUT OF STOCK: {product_data['artist']} - {product_data['album']} - {product_data['variant']}")
                 print(f"⚠️ OUT OF STOCK: {product_data['album']} - {product_data['variant']}")
                 self.discord.send_out_of_stock_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']})
+                self.stock_changed = True
             product_data["last_changed"] = self.stock_data["products"][product_key].get("last_changed")
         else:
+            self.logger.info(f"NEW VARIANT: {product_data['artist']} - {product_data['album']} - {product_data['variant']} - {'In Stock' if product_data['in_stock'] else 'Out of Stock'}")
             print(f"🆕 NEW VARIANT: {product_data['album']} - {product_data['variant']}")
             self.discord.send_new_variant_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']}, in_stock=product_data["in_stock"])
             product_data["last_changed"] = datetime.now().isoformat()
+            self.stock_changed = True
     
     def generate_report(self):
         artists = {}
@@ -145,10 +157,13 @@ class RiseAboveMonitor:
                 artists[artist] = []
             artists[artist].append(product)
         
+        last_stock_change = self.stock_data.get("last_updated", "Never")
+        
         os.makedirs("data", exist_ok=True)
         with open("data/rise_above_report.md", "w") as f:
             f.write("# Rise Above Records Stock Report\n\n")
-            f.write(f"**Last Updated:** {datetime.now().isoformat()}\n\n")
+            f.write(f"**Last Check:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"**Last Stock Change:** {last_stock_change}\n\n")
             
             for artist, items in artists.items():
                 f.write(f"## {artist}\n\n")
@@ -161,20 +176,41 @@ class RiseAboveMonitor:
                 f.write("\n")
     
     def run(self, artist_urls, mode='test'):
+        self.logger.info(f"Starting stock monitoring in {mode} mode")
         for url, artist_name in artist_urls.items():
             self.process_artist(url, artist_name, mode)
         
         self.save_stock_data()
         self.generate_report()
+        self.logger.info(f"Stock monitoring completed: {len(self.current_products)} products tracked")
         print(f"\nStock data updated: {len(self.current_products)} products tracked")
 
 if __name__ == "__main__":
     import sys
     
+    os.makedirs("logs", exist_ok=True)
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('logs/rise_above_monitor.log', mode='w'),
+            logging.StreamHandler()
+        ]
+    )
+    
+    logger = logging.getLogger(__name__)
+    
+    delay = random.uniform(120, 300)
+    start_time = datetime.now().timestamp() + delay
+    start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
+    logger.info(f"Script will start in {delay/60:.1f} minutes at {start_time_str}")
+    print(f"Starting in {delay/60:.1f} minutes at {start_time_str}...")
+    time.sleep(delay)
+    
     artist_urls = {
         "https://riseaboverecords.com/product-category/electric-wizard-2/": "Electric Wizard",
-        "https://riseaboverecords.com/product-category/uncle-acid-and-the-deadbeats-3/": "Uncle Acid and the Deadbeats",
-        "https://riseaboverecords.com/product-category/church-of-misery-2/": "Church of Misery",
+        "https://riseaboverecords.com/product-category/uncle-acid-and-the-deadbeats-3/": "Uncle Acid and the Deadbeats"
     }
     
     mode = sys.argv[1] if len(sys.argv) > 1 else 'test'

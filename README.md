@@ -59,6 +59,7 @@ monitor.run(artist_urls, mode='production')
 
 - `data/rise_above_stock.json` - Persistent stock tracking data
 - `data/rise_above_report.md` - Human-readable stock status report
+- `logs/rise_above_monitor.log` - Timestamped execution log (overwritten each run)
 - `html/` - Cached HTML files (test mode only)
 
 ## Discord Notifications
@@ -88,6 +89,8 @@ artist_urls = {
 
 - Only monitors vinyl records (CDs are filtered out)
 - Includes 2-5 second delays between requests to be respectful
+- Random 2-5 minute startup delay to avoid predictable timing
 - No alerts sent on first run (prevents spam when setting up)
 - Tracks price changes and stock status over time
 - Generates unique product keys for variant tracking
+- Comprehensive logging with timestamps for monitoring and debugging

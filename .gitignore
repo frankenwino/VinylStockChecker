@@ -21,6 +21,7 @@ ENV/
 rise_above_stock.json
 rise_above_report.md
 app/html/
+app/logs/
 
 # OS generated files
 .DS_Store
