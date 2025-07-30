@@ -131,12 +131,12 @@ class RiseAboveMonitor:
             
         if product_key in self.stock_data["products"]:
             old_stock = self.stock_data["products"][product_key]["in_stock"]
-            if old_stock == False and product_data["in_stock"] == True:
+            if old_stock == False and product_data["in_stock"] is True:
                 self.logger.warning(f"RESTOCK: {product_data['artist']} - {product_data['album']} - {product_data['variant']}")
                 print(f"🔔 RESTOCK: {product_data['album']} - {product_data['variant']}")
                 self.discord.send_restock_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']})
                 self.stock_changed = True
-            elif old_stock == True and product_data["in_stock"] == False:
+            elif old_stock is True and product_data["in_stock"] == False:
                 self.logger.warning(f"OUT OF STOCK: {product_data['artist']} - {product_data['album']} - {product_data['variant']}")
                 print(f"⚠️ OUT OF STOCK: {product_data['album']} - {product_data['variant']}")
                 self.discord.send_out_of_stock_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']})
@@ -201,6 +201,7 @@ if __name__ == "__main__":
     
     logger = logging.getLogger(__name__)
     
+    # amazonq-ignore-next-line
     delay = random.uniform(120, 300)
     start_time = datetime.now().timestamp() + delay
     start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
