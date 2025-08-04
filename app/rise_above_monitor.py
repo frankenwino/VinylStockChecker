@@ -24,7 +24,7 @@ class RiseAboveMonitor:
         self.logger = logging.getLogger(__name__)
     
     def get_page(self, url):
-        # time.sleep(random.uniform(2, 5))
+        time.sleep(random.uniform(2, 5))
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -214,7 +214,7 @@ if __name__ == "__main__":
     start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
     logger.info(f"Script will start in {delay/60:.1f} minutes at {start_time_str}")
     print(f"Starting in {delay/60:.1f} minutes at {start_time_str}...")
-    # time.sleep(delay)
+    time.sleep(delay)
     
     artist_urls = {
         "https://riseaboverecords.com/product-category/electric-wizard-2/": "Electric Wizard",
