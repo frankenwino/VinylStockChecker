@@ -9,9 +9,13 @@ from bs4 import BeautifulSoup
 from discord_notifier import DiscordNotifier
 
 class RiseAboveMonitor:
-    def __init__(self, data_file="data/rise_above_stock.json", html_dir="html"):
-        self.data_file = data_file
-        self.html_dir = html_dir
+    def __init__(self, root_dir, data_file="rise_above_stock.json"):
+        print(f"Current file path: {__file__}")
+
+        self.root_dir = root_dir
+        self.data_dir = os.path.join(self.root_dir, "data")
+        self.html_dir = os.path.join(self.root_dir, "html")                        
+        self.data_file = os.path.join(self.data_dir, data_file)
         self.discord = DiscordNotifier()
         self.stock_data = self.load_stock_data()
         self.current_products = {}
@@ -20,7 +24,7 @@ class RiseAboveMonitor:
         self.logger = logging.getLogger(__name__)
     
     def get_page(self, url):
-        time.sleep(random.uniform(2, 5))
+        # time.sleep(random.uniform(2, 5))
         try:
             response = requests.get(url)
             response.raise_for_status()
@@ -159,8 +163,9 @@ class RiseAboveMonitor:
         
         last_stock_change = self.stock_data.get("last_updated", "Never")
         
-        os.makedirs("data", exist_ok=True)
-        with open("data/rise_above_report.md", "w") as f:
+        os.makedirs(self.data_dir,  exist_ok=True)
+        report_file = os.path.join(self.data_dir, "rise_above_report.md")
+        with open(report_file, "w") as f:
             f.write("# Rise Above Records Stock Report\n\n")
             f.write(f"**Last Check:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"**Last Stock Change:** {last_stock_change}\n\n")
@@ -175,7 +180,7 @@ class RiseAboveMonitor:
                     f.write(f"| {item['album']} | {item['variant']} | {item['price']} | {status} |\n")
                 f.write("\n")
     
-    def run(self, artist_urls, mode='test'):
+    def run(self, root_dir, artist_urls, mode='test'):
         self.logger.info(f"Starting stock monitoring in {mode} mode")
         for url, artist_name in artist_urls.items():
             self.process_artist(url, artist_name, mode)
@@ -188,26 +193,28 @@ class RiseAboveMonitor:
 if __name__ == "__main__":
     import sys
     
-    os.makedirs("logs", exist_ok=True)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    log_dir = os.path.join(current_dir, "logs")
+    
+    os.makedirs(log_dir, exist_ok=True)
     
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('logs/rise_above_monitor.log', mode='w'),
+            logging.FileHandler(os.path.join(log_dir, 'rise_above_monitor.log'), mode='w'),
             logging.StreamHandler()
         ]
     )
     
     logger = logging.getLogger(__name__)
     
-    # amazonq-ignore-next-line
     delay = random.uniform(120, 300)
     start_time = datetime.now().timestamp() + delay
     start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
     logger.info(f"Script will start in {delay/60:.1f} minutes at {start_time_str}")
     print(f"Starting in {delay/60:.1f} minutes at {start_time_str}...")
-    time.sleep(delay)
+    # time.sleep(delay)
     
     artist_urls = {
         "https://riseaboverecords.com/product-category/electric-wizard-2/": "Electric Wizard",
@@ -215,5 +222,5 @@ if __name__ == "__main__":
     }
     
     mode = sys.argv[1] if len(sys.argv) > 1 else 'test'
-    monitor = RiseAboveMonitor()
-    monitor.run(artist_urls, mode)
+    monitor = RiseAboveMonitor(current_dir)
+    monitor.run(current_dir, artist_urls, mode)
