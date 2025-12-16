@@ -19,7 +19,7 @@ class RiseAboveMonitor:
         self.discord = DiscordNotifier()
         self.stock_data = self.load_stock_data()
         self.current_products = {}
-        self.stock_file_exists = os.path.exists(data_file)
+        self.stock_file_exists = os.path.exists(self.data_file)
         self.stock_changed = False
         self.logger = logging.getLogger(__name__)
     
@@ -149,7 +149,14 @@ class RiseAboveMonitor:
         else:
             self.logger.info(f"NEW VARIANT: {product_data['artist']} - {product_data['album']} - {product_data['variant']} - {'In Stock' if product_data['in_stock'] else 'Out of Stock'}")
             print(f"🆕 NEW VARIANT: {product_data['album']} - {product_data['variant']}")
-            self.discord.send_new_variant_alert(**{k: product_data[k] for k in ['artist', 'album', 'variant', 'price', 'url']}, in_stock=product_data["in_stock"])
+            self.discord.send_new_variant_alert(
+                artist=product_data['artist'],
+                album=product_data['album'], 
+                variant=product_data['variant'],
+                price=product_data['price'],
+                url=product_data['url'],
+                in_stock=product_data['in_stock']
+            )
             product_data["last_changed"] = datetime.now().isoformat()
             self.stock_changed = True
     

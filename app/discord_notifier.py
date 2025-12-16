@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 class DiscordNotifier:
     def __init__(self):
-        load_dotenv('../.env')
+        load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'))
         self.webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
         
     def send_restock_alert(self, artist: str, album: str, variant: str, price: str, url: str) -> None:
