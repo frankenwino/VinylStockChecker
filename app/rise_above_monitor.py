@@ -515,19 +515,21 @@ if __name__ == "__main__":
     )
     
     logger = logging.getLogger(__name__)
-    
-    delay = random.uniform(120, 300)
-    start_time = datetime.now().timestamp() + delay
-    start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
-    logger.info(f"Script will start in {delay/60:.1f} minutes at {start_time_str}")
-    print(f"Starting in {delay/60:.1f} minutes at {start_time_str}...")
-    time.sleep(delay)
-    
+
+    mode = sys.argv[1] if len(sys.argv) > 1 else 'test'
+
+    if '--no-delay' not in sys.argv:
+        delay = random.uniform(120, 300)
+        start_time = datetime.now().timestamp() + delay
+        start_time_str = datetime.fromtimestamp(start_time).strftime('%H:%M:%S')
+        logger.info(f"Script will start in {delay/60:.1f} minutes at {start_time_str}")
+        print(f"Starting in {delay/60:.1f} minutes at {start_time_str}...")
+        time.sleep(delay)
+
     artist_urls = {
         "https://riseaboverecords.com/product-category/electric-wizard-2/": "Electric Wizard",
         "https://riseaboverecords.com/product-category/uncle-acid-and-the-deadbeats-3/": "Uncle Acid and the Deadbeats"
     }
-    
-    mode = sys.argv[1] if len(sys.argv) > 1 else 'test'
+
     monitor = RiseAboveMonitor(current_dir)
     monitor.run(current_dir, artist_urls, mode)
