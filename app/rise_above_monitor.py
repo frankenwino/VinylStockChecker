@@ -41,6 +41,7 @@ class RiseAboveMonitor:
         # would otherwise cause every product to fire as a "new variant" alert.
         self.stock_file_exists = bool(self.stock_data.get("products"))
         self.stock_changed = False
+        self.fetch_errors = 0  # count of failed page fetches this run
     
     def normalize_text(self, text):
         """Normalize text for consistent product key generation"""
@@ -137,11 +138,21 @@ class RiseAboveMonitor:
     
     def get_page(self, url):
         time.sleep(random.uniform(2, 5))
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-GB,en;q=0.5",
+        }
         try:
-            response = requests.get(url)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             return response.text
         except requests.RequestException as e:
+            self.fetch_errors += 1
             self.logger.error(f"Error fetching {url}: {e}")
             print(f"Error fetching {url}: {e}")
             return None
@@ -462,11 +473,19 @@ class RiseAboveMonitor:
             
             current_count = len(self.current_products)
             
-            # Check for significant data loss
+            # Guard: if fetch errors caused a near-total wipeout, preserve the
+            # existing data file rather than overwriting it with an empty/partial result.
             if previous_count > 0 and current_count < previous_count * 0.5:
-                self.logger.error(f"Significant data loss detected: {previous_count} -> {current_count} products")
-                # Could send admin alert here
-            
+                self.logger.error(
+                    f"Significant data loss detected: {previous_count} -> {current_count} products "
+                    f"({self.fetch_errors} fetch error(s)). Skipping save to protect existing data."
+                )
+                print(
+                    f"\n⚠️  Fetch errors caused data loss ({previous_count} -> {current_count} products). "
+                    f"Existing data file preserved."
+                )
+                return
+
             self.save_stock_data()
             self.save_alert_history()
             self.generate_report()
