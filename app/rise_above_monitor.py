@@ -35,7 +35,11 @@ class RiseAboveMonitor:
         self.stock_data = self.load_stock_data()
         self.alert_history = self.load_alert_history()
         self.current_products = {}
-        self.stock_file_exists = os.path.exists(self.data_file)
+        # Treat as first run only when there are genuinely no previously saved products.
+        # Checking the file path after load_stock_data() is unreliable because that method
+        # may rename/backup a corrupted file, and an empty products dict (from a bad file)
+        # would otherwise cause every product to fire as a "new variant" alert.
+        self.stock_file_exists = bool(self.stock_data.get("products"))
         self.stock_changed = False
     
     def normalize_text(self, text):
