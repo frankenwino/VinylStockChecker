@@ -369,7 +369,21 @@ class RiseAboveMonitor:
     def check_changes(self, product_key, product_data):
         """Enhanced change detection with type safety and duplicate prevention"""
         if not self.stock_file_exists:
+            # First run — send new variant alert for everything to verify Discord is working
+            if self.should_send_alert("new_variant", product_key):
+                try:
+                    self.discord.send_new_variant_alert(
+                        artist=product_data['artist'],
+                        album=product_data['album'],
+                        variant=product_data['variant'],
+                        price=product_data['price'],
+                        url=product_data['url'],
+                        in_stock=product_data['in_stock']
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error sending new variant alert: {e}")
             product_data["last_changed"] = datetime.now().isoformat()
+            self.stock_changed = True
             return
             
         if product_key in self.stock_data["products"]:
